@@ -14,8 +14,15 @@ def loss(pred: Batch) -> torch.Tensor:
     return sum((x * x).sum() for x in tuple(surf_values) + tuple(atmos_values))
 
 
-model = AuroraPretrained(autocast=True)
-model.load_checkpoint()
+# model = AuroraPretrained(autocast=True)
+# model.load_checkpoint()
+model = AuroraPretrained(
+    autocast=True,
+    surf_vars=("msl"),
+    static_vars=("lsm", "z", "slt"),
+    atmos_vars=("u", "v", "t", "q")
+)
+model.load_checkpoint(strict=False)
 model.configure_activation_checkpointing()
 model.train()
 model = model.to("cuda")
