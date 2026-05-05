@@ -19,7 +19,7 @@ variables = {'slp': ('/mnt/data/sonia/cyclone/0.25/slp/slp', 'slp', None),
              'specific_humidity': ('/mnt/data/sonia/cyclone/0.25/humidity/humidity', 'q', 500), # 500
             }
 
-out_dir = '/mnt/data/sonia/climax-data/train-raw'
+out_dir = '/mnt/data/sonia/aurora-data/train'
 os.makedirs(out_dir, exist_ok=True)
 data = np.memmap(os.path.join(out_dir, 'train_data.dat'), dtype=np.float32, mode='w+', 
                shape=((end-start)*hrs_per_year, len(variables), 721, 1440))
@@ -31,7 +31,7 @@ for yr in tqdm(range(1940, 2025)):
         if level is not None:
             ds = ds.sel(pressure_level=level)
         ds = ds.transpose("time", "lat", "lon") # just in case
-        print(var_name, ds.to_array().shape, ds)
+        # print(var_name, ds.to_array().shape, ds)
         data[(yr-start)*hrs_per_year:(yr-start+1)*hrs_per_year, i] = \
             ds[short_name].values[:hrs_per_year].astype(np.float32) # skip last day if leap year
         
