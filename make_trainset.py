@@ -24,7 +24,7 @@ os.makedirs(out_dir, exist_ok=True)
 data = np.memmap(os.path.join(out_dir, 'train_data.dat'), dtype=np.float32, mode='w+', 
                shape=((end-start)*hrs_per_year, len(variables), 721, 1440))
 
-for yr in tqdm(range(1940, 2025)):
+for yr in tqdm(range(start, end)):
     yr_vars = []
     for i, (var_name, (var_path, short_name, level)) in enumerate(variables.items()):
         ds = xr.open_dataset(f'{var_path}.{yr}.nc')
@@ -38,7 +38,7 @@ for yr in tqdm(range(1940, 2025)):
     if yr % 10 == 0:
         data.flush()
 
-dataset_mmap.flush()
+data.flush()
 
 
 # constants file
