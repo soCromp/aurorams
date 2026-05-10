@@ -70,14 +70,14 @@ def create_aurora_batch(tensor_data, static_dict, device="cuda"):
     
     # Static variables: (Lat, Lon)
     static_vars = {
-        "lsm": torch.from_numpy(static_dict["lsm"]).to(device),
-        "z": torch.from_numpy(static_dict["z"]).to(device),
-        "slt": torch.from_numpy(static_dict["slt"]).to(device),
+        "lsm": torch.from_numpy(static_dict["lsm"]).squeeze().to(device),
+        "z": torch.from_numpy(static_dict["z"]).squeeze().to(device),
+        "slt": torch.from_numpy(static_dict["slt"]).squeeze().to(device),
     }
     
     metadata = Metadata(
         lat=torch.linspace(90, -90, 721),
-        lon=torch.linspace(0, 360, 1440 + 1)[:-1],
+        lon=torch.linspace(0, 360, 1441)[:-1],
         time=[datetime(2020, 6, 1, 12, 0)] * B, # Dummy time for inference
         atmos_levels=(500, 925),
     )
@@ -87,23 +87,25 @@ def create_aurora_batch(tensor_data, static_dict, device="cuda"):
 # --- 3. Custom Loss Function ---
 def calc_loss(pred: Batch, target: Batch) -> torch.Tensor:
     """Calculates MSE ONLY on the valid pressure levels."""
-    loss = F.mse_loss(pred.surf_vars["msl"], target.surf_vars["msl"])
+    H, W = pred.surf_vars["msl"].shape[-2:]
+    
+    loss = F.mse_loss(pred.surf_vars["msl"], target.surf_vars["msl"][..., :H, :W])
     
     # 500 hPa variables
-    loss += F.mse_loss(pred.atmos_vars["u"][:, :, 0], target.atmos_vars["u"][:, :, 0])
-    loss += F.mse_loss(pred.atmos_vars["v"][:, :, 0], target.atmos_vars["v"][:, :, 0])
-    loss += F.mse_loss(pred.atmos_vars["q"][:, :, 0], target.atmos_vars["q"][:, :, 0])
+    loss += F.mse_loss(pred.atmos_vars["u"][:, :, 0], target.atmos_vars["u"][:, :, 0][..., :H, :W])
+    loss += F.mse_loss(pred.atmos_vars["v"][:, :, 0], target.atmos_vars["v"][:, :, 0][..., :H, :W])
+    loss += F.mse_loss(pred.atmos_vars["q"][:, :, 0], target.atmos_vars["q"][:, :, 0][..., :H, :W])
     
     # 925 hPa variables
-    loss += F.mse_loss(pred.atmos_vars["t"][:, :, 1], target.atmos_vars["t"][:, :, 1])
+    loss += F.mse_loss(pred.atmos_vars["t"][:, :, 1], target.atmos_vars["t"][:, :, 1][..., :H, :W])
     
     return loss
 
 # --- 4. Main Training Loop ---
 if __name__ == "__main__":
-    out_dir = '/mnt/data/sonia/aurora-data/train'
-    data_path = os.path.join(out_dir, 'train_data.dat')
-    static_path = os.path.join(out_dir, 'aurora-0.25-static.pickle')
+    out_dir = '/mnt/data/sonia/aurora-out/finetuning'
+    data_path = '/mnt/data/sonia/aurora-data/train/train_data.dat'
+    static_path = '/mnt/data/sonia/aurora-data/train/aurora-0.25-static.pickle'
 
     print("Loading static variables...")
     with open(static_path, "rb") as f:
@@ -130,8 +132,6 @@ if __name__ == "__main__":
     print("Starting training loop...")
     pbar = tqdm(dataloader, desc="Training")
     for step, (inputs, targets) in enumerate(pbar):
-        print(f"Step {step}")
-        
         # 1. Format inputs and targets into Batch objects
         input_batch = create_aurora_batch(inputs, static_dict, device="cuda")
         target_batch = create_aurora_batch(targets, static_dict, device="cuda")
