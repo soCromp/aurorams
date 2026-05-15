@@ -117,7 +117,8 @@ if __name__ == "__main__":
         autocast=True,
         surf_vars=("msl",), 
         static_vars=("lsm", "z", "slt"),
-        atmos_vars=("u", "v", "t", "q")
+        atmos_vars=("u", "v", "t", "q"),
+        stabilise_level_agg=True
     )
     model.load_checkpoint(strict=False)
     model.configure_activation_checkpointing()
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
 
     dataset = MultivarDataset(data_path)
-    dataloader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
 
     print("Starting training loop...")
     pbar = tqdm(dataloader, desc="Training")
